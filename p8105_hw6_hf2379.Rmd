@@ -1,0 +1,6 @@
+---
+title: "HW6"
+author: "Holly Finertie - HF2379"
+output: github_document
+---
+
