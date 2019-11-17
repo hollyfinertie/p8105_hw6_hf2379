@@ -6,14 +6,16 @@ output: github_document
 
 ```{r, echo = FALSE}
 library(tidyverse)
+library(modelr)
 ```
 
 
 ## Problem 1 
 
-Load and tidy dataset: 
+#### Load and tidy dataset: 
 
 ```{r}
+#load and tidy dataset
 birthweight = read_csv("./data/birthweight.csv") %>% 
   janitor::clean_names() %>% 
   mutate(
@@ -41,4 +43,71 @@ birthweight = read_csv("./data/birthweight.csv") %>%
 anyNA(birthweight)
 ```
 
+#### Build a model:  
+Many factors, including biological and social, affect birthweight. Per [March of Dimes](https://www.marchofdimes.org/complications/low-birthweight.aspxl), social factors that affect low birthweight include substances use, SES, violence, and race. Using the variables available in the `birthweight.csv` dataset, I hypothesize that family income, mother's race, and number of cigarettes smoked per day during pregnancy will be significantly associated with birthweight. 
 
+First, I will test the bivariate associations between birthweight and each covariate of interest. Covariates significant at p-value <0.25 will be considered in the multinomial multivariable analysis. 
+
+##### Bivariate Analysis
+
+```{r}
+bwt_model = birthweight %>% 
+  mutate(
+    mrace = fct_infreq(mrace)) %>% 
+  select(bwt, fincome, gaweeks, mrace, smoken)
+
+model_fincome = lm(bwt ~ fincome, data = bwt_model) %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) 
+```
+
+* **Birthweight and Family Income:** At the 5% level of significant, family income is significantly associated with birthweight. For every $100 increase in monthly income, birthweight increases by `r model_fincome %>% filter(term == "fincome") %>% pull(estimate) %>% round(., digits = 2)` grams. 
+
+
+```{r}
+model_mrace = lm(bwt ~  mrace, data = bwt_model) %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) 
+```
+
+* **Birthweight and Mother's Race:** At the 5% level of significant, mother's race is significantly associated with birthweight. Compared to white mothers, all other races have baby's with a lower birthweight. Black mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceBlack") %>% pull(estimate) %>% round(., digits = 2)` grams less. Puerto Rican mothers have baby's who weigh `r model_mrace %>% filter(term == "mracePuerto Rican") %>% pull(estimate) %>% round(., digits = 2)` grams less. Asian mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceAsian") %>% pull(estimate) %>% round(., digits = 2)` grams less. 
+
+
+```{r}
+model_smoken = lm(bwt ~  smoken, data = bwt_model) %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value)
+```
+
+* **Birthweight and Smoking:** At the 5% level of significant, smoking is significantly associated with birthweight. For every 1 additional cigarette smoked per day, birthweight decreases `r model_smoken %>% filter(term == "smoken") %>% pull(estimate) %>% round(., digits = 2)` grams. 
+
+
+##### Multivariable Analysis
+
+Now that we confirmed all three variables are separately and significantly associated with the outcome (birthweight), we can move forward with backwards step-wise analysis. I will fit a model with all three variables. If one is not signifcant at a 5% alpha level, I will remove that variable and repeat until all variables are significant. 
+
+
+```{r}
+model_social = lm(bwt ~ fincome + mrace + smoken, data = bwt_model) 
+
+tidy_social = model_social %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) %>% 
+  knitr::kable(digits = 3)
+
+tidy_social
+```
+
+All three variables are significant at a 5% alpha level. 
+
+
+```{r}
+added_social = bwt_model %>% 
+  modelr::add_residuals(model_social) %>% 
+  modelr::add_predictions(model_social)
+
+plot_social = added_social %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point()
+
+```
