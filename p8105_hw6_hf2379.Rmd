@@ -163,5 +163,48 @@ bwt_cv %>%
   )
 ```
 
+## Problem 2  
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+
+
+weather_bootstrap = weather_df %>% 
+  modelr::bootstrap(n = 5000) %>% 
+  mutate(
+    models = map(strap, ~ lm(tmax ~ tmin, data = .x)),
+    results = map(models, broom::tidy))%>% 
+  select(results) %>% 
+  unnest(results) %>% 
+  filter(term == "tmin")
+
+weather_bootstrap %>% 
+  ggplot(aes(x = estimate)) + 
+  geom_density()
+
+```
+
+
+Across the the 5,000 estimates, the mean estimate is `r weather_bootstrap %>% summarize(mean = round(mean(estimate), digits = 2)) %>% pull(mean)` with standard error `r weather_bootstrap %>% summarize(mean = round(mean(std.error), digits = 2)) %>% pull(mean)`. Just looking at it visually, there doesn't appear to be any skewness and the distribution centers around 1.04. 
+
+
+
+
+
+
+
+
+
+
 
 
