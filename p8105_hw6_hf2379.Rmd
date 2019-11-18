@@ -12,7 +12,7 @@ library(modelr)
 
 ## Problem 1 
 
-#### Load and tidy dataset: 
+### a) Load and tidy dataset: 
 
 ```{r}
 #load and tidy dataset
@@ -43,7 +43,7 @@ birthweight = read_csv("./data/birthweight.csv") %>%
 anyNA(birthweight)
 ```
 
-### Build a model:  
+### b) Build a model:  
 Many factors, including biological and social, affect birthweight. Per [March of Dimes](https://www.marchofdimes.org/complications/low-birthweight.aspxl), social factors that affect low birthweight include substances use, SES, violence, and race. Using the variables available in the `birthweight.csv` dataset, I hypothesize that family income, mother's race, and number of cigarettes smoked per day during pregnancy will be significantly associated with birthweight. 
 
 First, I will test the bivariate associations between birthweight and each covariate of interest. Covariates significant at p-value <0.25 will be considered in the multinomial multivariable analysis. 
@@ -111,7 +111,7 @@ plot_social = added_social %>%
 
 ```
 
-### Test Against Other Models: 
+### c) Test Against Other Models: 
 
 Based on the below plot, the model with the interaction terms (`bwt = bhead + blength + babysex + bhead x blength + bhead x babysex + blength x babysex + bhead x blength x babysex`) is the best fitting model with the lowest mean squared errors. 
 
@@ -157,7 +157,10 @@ bwt_cv %>%
     values_to = "rmse",
     names_prefix = "rmse_") %>% 
   mutate(model = fct_inorder(model)) %>% 
-  ggplot(aes(x = model, y = rmse)) + geom_violin()
+  ggplot(aes(x = model, y = rmse)) + geom_violin() +
+  labs(
+    title = "Prediction Error Distributions Between Models"
+  )
 ```
 
 
