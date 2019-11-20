@@ -15,7 +15,6 @@ library(modelr)
 ### a) Load and tidy dataset: 
 
 ```{r}
-#load and tidy dataset
 birthweight = read_csv("./data/birthweight.csv") %>% 
   janitor::clean_names() %>% 
   mutate(
@@ -39,7 +38,6 @@ birthweight = read_csv("./data/birthweight.csv") %>%
               `4` = "Puerto Rican", 
               `8` = "Other"))) 
 
-#check for missing values
 anyNA(birthweight)
 ```
 
@@ -166,6 +164,8 @@ bwt_cv %>%
 ## Problem 2  
 
 ```{r}
+set.seed(1)
+
 weather_df = 
   rnoaa::meteo_pull_monitors(
     c("USW00094728"),
@@ -180,22 +180,59 @@ weather_df =
 
 
 weather_bootstrap = weather_df %>% 
-  modelr::bootstrap(n = 5000) %>% 
+  modelr::bootstrap(n = 50) %>% 
   mutate(
     models = map(strap, ~ lm(tmax ~ tmin, data = .x)),
-    results = map(models, broom::tidy))%>% 
-  select(results) %>% 
-  unnest(results) %>% 
-  filter(term == "tmin")
-
-weather_bootstrap %>% 
-  ggplot(aes(x = estimate)) + 
-  geom_density()
+    results = map(models, broom::tidy), 
+    glanced = map(models, broom::glance)) %>% 
+  unnest(results, glanced) %>% 
+  select(.id, r.squared, estimate, term) %>% 
+  pivot_wider(
+    names_from = term, 
+    values_from = estimate
+  ) %>% 
+  select(-.id) %>% 
+  rename(
+    beta0 = `(Intercept)`, 
+    beta1 = tmin) %>% 
+  mutate(
+    ln_betas = log(beta0*beta1))
 
 ```
 
 
-Across the the 5,000 estimates, the mean estimate is `r weather_bootstrap %>% summarize(mean = round(mean(estimate), digits = 2)) %>% pull(mean)` with standard error `r weather_bootstrap %>% summarize(mean = round(mean(std.error), digits = 2)) %>% pull(mean)`. Just looking at it visually, there doesn't appear to be any skewness and the distribution centers around 1.04. 
+
+### Plots 
+
+**1) R-squared**  
+The plot below shows the distribution of R-squared. The 95% confidence interval for R-squared is (`r round(quantile(pull(weather_bootstrap, r.squared), probs = c(0.025, 0.975)), digits = 2)`). 
+
+```{r}
+weather_bootstrap %>% 
+  ggplot(aes(x = r.squared)) + 
+  geom_density() + 
+  labs(
+    title = "Distribution of R-squared Values"
+  )
+```
+
+
+**2) Log(beta0 x beta1)**  
+The plot below shows the distribution of log(beta0* beta1). The 95% confidence interval for the log(beta0*beta1) is (`r round(quantile(pull(weather_bootstrap, ln_betas), probs = c(0.025, 0.975)), digits = 2)`). 
+```{r}
+weather_bootstrap %>% 
+  ggplot(aes(x = ln_betas)) + 
+  geom_density() +
+  labs(
+    title = "Distribution of Log(beta0*beta1) Values"
+  )
+```
+
+
+
+
+
+
 
 
 
