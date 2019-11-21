@@ -14,6 +14,10 @@ library(modelr)
 
 ### a) Load and tidy dataset: 
 
+* Confirmed no missing values
+* Converted race, malformation, and xex variables to factors
+* Converted variables with imperial units to metric
+
 ```{r}
 birthweight = read_csv("./data/birthweight.csv") %>% 
   janitor::clean_names() %>% 
@@ -36,13 +40,17 @@ birthweight = read_csv("./data/birthweight.csv") %>%
               `2` = "Black",
               `3` = "Asian", 
               `4` = "Puerto Rican", 
-              `8` = "Other"))) 
+              `8` = "Other")), 
+    delwt = 453.592*delwt, 
+    ppwt = 453.592*ppwt, 
+    wtgain = 453.592*wtgain, 
+    mheight = 2.54*mheight)
 
 anyNA(birthweight)
 ```
 
-### b) Build a model:  
-Many factors, including biological and social, affect birthweight. Per [March of Dimes](https://www.marchofdimes.org/complications/low-birthweight.aspxl), social factors that affect low birthweight include substances use, SES, violence, and race. Using the variables available in the `birthweight.csv` dataset, I hypothesize that family income, mother's race, and number of cigarettes smoked per day during pregnancy will be significantly associated with birthweight. 
+### b) Model Building:  
+Many factors, including biological and social, affect birthweight. Per [March of Dimes](https://www.marchofdimes.org/complications/low-birthweight.aspxl), social factors that affect low birthweight include substance use, SES, violence, and race. Using the variables available in the `birthweight.csv` dataset, I hypothesize that family income, mother's race, and number of cigarettes smoked per day during pregnancy will be significantly associated with birthweight in grams. 
 
 First, I will test the bivariate associations between birthweight and each covariate of interest. Covariates significant at p-value <0.25 will be considered in the multinomial multivariable analysis. 
 
@@ -57,27 +65,34 @@ bwt_model = birthweight %>%
 model_fincome = lm(bwt ~ fincome, data = bwt_model) %>% 
   broom::tidy() %>% 
   select(term, estimate, p.value) 
+
+model_fincome %>% knitr::kable(digits = 3)
+  
 ```
 
-* **Birthweight and Family Income:** At the 5% level of significant, family income is significantly associated with birthweight. For every $100 increase in monthly income, birthweight increases by `r model_fincome %>% filter(term == "fincome") %>% pull(estimate) %>% round(., digits = 2)` grams. 
+* **Birthweight and Family Income:** At the specified 25% level of significant, family income is significantly associated with birthweight. For every $100 increase in monthly income, birthweight increases by `r model_fincome %>% filter(term == "fincome") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model. 
 
 
 ```{r}
 model_mrace = lm(bwt ~  mrace, data = bwt_model) %>% 
   broom::tidy() %>% 
   select(term, estimate, p.value) 
+
+model_mrace %>% knitr::kable(digits = 3)
 ```
 
-* **Birthweight and Mother's Race:** At the 5% level of significant, mother's race is significantly associated with birthweight. Compared to white mothers, all other races have baby's with a lower birthweight. Black mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceBlack") %>% pull(estimate) %>% round(., digits = 2)` grams less. Puerto Rican mothers have baby's who weigh `r model_mrace %>% filter(term == "mracePuerto Rican") %>% pull(estimate) %>% round(., digits = 2)` grams less. Asian mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceAsian") %>% pull(estimate) %>% round(., digits = 2)` grams less. 
+* **Birthweight and Mother's Race:** At the specified 25% level of significant, mother's race is significantly associated with birthweight. Compared to white mothers, all other races have baby's with a lower birthweight. Black mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceBlack") %>% pull(estimate) %>% round(., digits = 2)` grams less. Puerto Rican mothers have baby's who weigh `r model_mrace %>% filter(term == "mracePuerto Rican") %>% pull(estimate) %>% round(., digits = 2)` grams less. Asian mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceAsian") %>% pull(estimate) %>% round(., digits = 2)` grams less. These indicator variables will be considered in the final model. 
 
 
 ```{r}
 model_smoken = lm(bwt ~  smoken, data = bwt_model) %>% 
   broom::tidy() %>% 
   select(term, estimate, p.value)
+
+model_smoken %>% knitr::kable(digits = 3)
 ```
 
-* **Birthweight and Smoking:** At the 5% level of significant, smoking is significantly associated with birthweight. For every 1 additional cigarette smoked per day, birthweight decreases `r model_smoken %>% filter(term == "smoken") %>% pull(estimate) %>% round(., digits = 2)` grams. 
+* **Birthweight and Smoking:** At the specified 25% level of significant, smoking is significantly associated with birthweight. For every 1 additional cigarette smoked per day, birthweight decreases `r model_smoken %>% filter(term == "smoken") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model.
 
 
 #### Multivariable Analysis
@@ -94,18 +109,26 @@ tidy_social = model_social %>%
   knitr::kable(digits = 3)
 
 tidy_social
+
+glanced_social = model_social %>% 
+  broom::glance()
 ```
 
-All three variables are significant at a 5% alpha level. 
+All three variables are significant at a 5% alpha level. Additionally, the model describes `r glanced_social %>% mutate(rsquare = round(r.squared*100), digits = 2) %>%  pull(rsquare)`% of the total variance in birthweight (R-squared = `r round(pull(glanced_social, r.squared), digits = 2)`). Using the reported F-statistic of `r round(pull(glanced_social, statistic), digits = 2)` and p-value of `r round(pull(glanced_social, p.value), digits = 4)`, we can conclude that this model fits the data better than a model with only an intercept. 
+
+#### Model Residuals Against Fitted Values
 
 ```{r}
 added_social = bwt_model %>% 
   modelr::add_residuals(model_social) %>% 
   modelr::add_predictions(model_social)
 
-plot_social = added_social %>% 
+added_social %>% 
   ggplot(aes(x = pred, y = resid)) +
-  geom_point()
+  geom_point() +
+  labs(
+    title = "Plot of Residuals and Fitted Values"
+  )
 
 ```
 
@@ -180,7 +203,7 @@ weather_df =
 
 
 weather_bootstrap = weather_df %>% 
-  modelr::bootstrap(n = 50) %>% 
+  modelr::bootstrap(n = 5000) %>% 
   mutate(
     models = map(strap, ~ lm(tmax ~ tmin, data = .x)),
     results = map(models, broom::tidy), 
@@ -201,11 +224,10 @@ weather_bootstrap = weather_df %>%
 ```
 
 
-
 ### Plots 
 
 **1) R-squared**  
-The plot below shows the distribution of R-squared. The 95% confidence interval for R-squared is (`r round(quantile(pull(weather_bootstrap, r.squared), probs = c(0.025, 0.975)), digits = 2)`). 
+The plot below shows the distribution of R-squared values. The 95% confidence interval for R-squared is (`r round(quantile(pull(weather_bootstrap, r.squared), probs = c(0.025, 0.975)), digits = 2)`). The distribution is left skewed, with more outliers with lower values. Across the the 5,000 bootstraps, the mean R-squared value is `r weather_bootstrap %>% summarize(mean = round(mean(r.squared), digits = 3)) %>% pull(mean)` which is slightly lower than the median `r weather_bootstrap %>% summarize(median = round(median(r.squared), digits = 3)) %>% pull(median)` due to the skewness. 
 
 ```{r}
 weather_bootstrap %>% 
@@ -218,7 +240,7 @@ weather_bootstrap %>%
 
 
 **2) Log(beta0 x beta1)**  
-The plot below shows the distribution of log(beta0* beta1). The 95% confidence interval for the log(beta0*beta1) is (`r round(quantile(pull(weather_bootstrap, ln_betas), probs = c(0.025, 0.975)), digits = 2)`). 
+The plot below shows the distribution of log(beta0* beta1) values. The 95% confidence interval for the log(beta0*beta1) is (`r round(quantile(pull(weather_bootstrap, ln_betas), probs = c(0.025, 0.975)), digits = 2)`). Visually, the distribution does not have any obvious skewness or outliers and may follow a relatively normal distribution. Across the the 5,000 bootstraps, the mean value is `r weather_bootstrap %>% summarize(mean = round(mean(ln_betas), digits = 3)) %>% pull(mean)` which is the same as the median `r weather_bootstrap %>% summarize(median = round(median(ln_betas), digits = 3)) %>% pull(median)` indicating no skewness in the distribution. 
 ```{r}
 weather_bootstrap %>% 
   ggplot(aes(x = ln_betas)) + 
