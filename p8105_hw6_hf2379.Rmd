@@ -30,7 +30,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ### a) Load and tidy dataset: 
 
 * Confirmed no missing values
-* Converted race, malformation, and xex variables to factors
+* Converted race, malformation, and sex variables to factors
 * Converted variables with imperial units to metric
 
 ```{r}
@@ -85,7 +85,7 @@ model_fincome %>% knitr::kable(digits = 3)
   
 ```
 
-* **Birthweight and Family Income:** At the specified 25% level of significant, family income is significantly associated with birthweight. For every $100 increase in monthly income, birthweight increases by `r model_fincome %>% filter(term == "fincome") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model. 
+* **Birthweight and Family Income:** At the specified 25% level of significance, family income is significantly associated with birthweight. For every $100 increase in monthly income, birthweight increases by `r model_fincome %>% filter(term == "fincome") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model. 
 
 
 ```{r}
@@ -96,7 +96,7 @@ model_mrace = lm(bwt ~  mrace, data = bwt_model) %>%
 model_mrace %>% knitr::kable(digits = 3)
 ```
 
-* **Birthweight and Mother's Race:** At the specified 25% level of significant, mother's race is significantly associated with birthweight. Compared to white mothers, all other races have baby's with a lower birthweight. Black mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceBlack") %>% pull(estimate) %>% round(., digits = 2)` grams less. Puerto Rican mothers have baby's who weigh `r model_mrace %>% filter(term == "mracePuerto Rican") %>% pull(estimate) %>% round(., digits = 2)` grams less. Asian mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceAsian") %>% pull(estimate) %>% round(., digits = 2)` grams less. These indicator variables will be considered in the final model. 
+* **Birthweight and Mother's Race:** At the specified 25% level of significance, mother's race is significantly associated with birthweight. Compared to white mothers, all other races have baby's with a lower birthweight. Black mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceBlack") %>% pull(estimate) %>% round(., digits = 2)` grams less. Puerto Rican mothers have baby's who weigh `r model_mrace %>% filter(term == "mracePuerto Rican") %>% pull(estimate) %>% round(., digits = 2)` grams less. Asian mothers have baby's who weigh `r model_mrace %>% filter(term == "mraceAsian") %>% pull(estimate) %>% round(., digits = 2)` grams less. These indicator variables will be considered in the final model. 
 
 
 ```{r}
@@ -107,7 +107,7 @@ model_smoken = lm(bwt ~  smoken, data = bwt_model) %>%
 model_smoken %>% knitr::kable(digits = 3)
 ```
 
-* **Birthweight and Smoking:** At the specified 25% level of significant, smoking is significantly associated with birthweight. For every 1 additional cigarette smoked per day, birthweight decreases `r model_smoken %>% filter(term == "smoken") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model.
+* **Birthweight and Smoking:** At the specified 25% level of significance, smoking is significantly associated with birthweight. For every 1 additional cigarette smoked per day, birthweight decreases `r model_smoken %>% filter(term == "smoken") %>% pull(estimate) %>% round(., digits = 2)` grams. This variable will be considered in the final model.
 
 
 #### Multivariable Analysis
@@ -160,17 +160,6 @@ model_interaction = lm(bwt ~ bhead + blength + babysex
 
 bwt_cv = 
   crossv_mc(birthweight, 100) 
-
-bwt_cv %>% pull(train) %>% .[[1]] %>% as_tibble
-
-bwt_cv %>% pull(test) %>% .[[1]] %>% as_tibble
-
-bwt_cv =
-  bwt_cv %>% 
-  mutate(
-    train = map(train, as_tibble),
-    test = map(test, as_tibble))
-
 
 bwt_cv = 
   bwt_cv %>% 
