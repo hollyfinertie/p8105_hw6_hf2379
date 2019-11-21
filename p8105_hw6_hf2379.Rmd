@@ -7,6 +7,21 @@ output: github_document
 ```{r, echo = FALSE}
 library(tidyverse)
 library(modelr)
+library(viridis)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = FALSE,
+	fig.width = 8, 
+  fig.height = 6,
+  out.width = "90%"
+)
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
 
@@ -240,7 +255,7 @@ weather_bootstrap %>%
 
 
 **2) Log(beta0 x beta1)**  
-The plot below shows the distribution of log(beta0* beta1) values. The 95% confidence interval for the log(beta0*beta1) is (`r round(quantile(pull(weather_bootstrap, ln_betas), probs = c(0.025, 0.975)), digits = 2)`). Visually, the distribution does not have any obvious skewness or outliers and may follow a relatively normal distribution. Across the the 5,000 bootstraps, the mean value is `r weather_bootstrap %>% summarize(mean = round(mean(ln_betas), digits = 3)) %>% pull(mean)` which is the same as the median `r weather_bootstrap %>% summarize(median = round(median(ln_betas), digits = 3)) %>% pull(median)` indicating no skewness in the distribution. 
+The plot below shows the distribution of log(beta0* beta1) values. The 95% confidence interval for the log(beta0*beta1) is (`r round(quantile(pull(weather_bootstrap, ln_betas), probs = c(0.025, 0.975)), digits = 2)`). Visually, the distribution does not have any obvious skewness or outliers and may follow a relatively normal distribution. Across the the 5,000 bootstraps, the mean value is `r weather_bootstrap %>% summarize(mean = round(mean(ln_betas), digits = 3)) %>% pull(mean)` which is the same as the median `r weather_bootstrap %>% summarize(median = round(median(ln_betas), digits = 3)) %>% pull(median)` indicating no skewness in the distribution. The log transformation likely corrected any skewness in the data and created a more normal distribution. 
 ```{r}
 weather_bootstrap %>% 
   ggplot(aes(x = ln_betas)) + 
